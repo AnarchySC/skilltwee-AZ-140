@@ -795,7 +795,290 @@
         </div>
     </div>
 
-    <script src="skillQuests.js"></script>
-    <script src="main.js"></script>
+    <script>
+        // Complete skill quest data embedded
+        const skillQuests = {
+            'avd-architecture': {
+                icon: '🏗️',
+                quests: {
+                    'Understand Core Concepts': [
+                        'Explain the AVD architecture components (control plane, data plane)',
+                        'Understand workspace, host pool, and app group relationships',
+                        'Know the difference between pooled and personal desktop types',
+                        'Understand load balancing algorithms (breadth-first, depth-first)',
+                        'Explain RemoteApp vs full desktop deployment scenarios'
+                    ],
+                    'Plan Requirements': [
+                        'Determine licensing requirements (M365, Windows, CAL)',
+                        'Plan for multi-session vs single-session hosts',
+                        'Design for different user personas and workload types',
+                        'Calculate Azure consumption costs',
+                        'Plan for Azure region selection and availability'
+                    ],
+                    'Hands-on Practice': [
+                        'Create a basic AVD proof of concept',
+                        'Document an AVD architecture diagram',
+                        'Compare pricing for different scenarios'
+                    ]
+                },
+                resources: [
+                    { name: 'MS Learn - AVD Architecture', url: 'https://learn.microsoft.com/en-us/training/modules/azure-virtual-desktop-architecture/' },
+                    { name: 'AVD Documentation', url: 'https://learn.microsoft.com/en-us/azure/virtual-desktop/' },
+                    { name: 'AVD Pricing Calculator', url: 'https://azure.microsoft.com/en-us/pricing/calculator/' }
+                ]
+            },
+            // Add simplified versions for other skills - full data would make this too long
+            'network-design': { icon: '🌐', quests: { 'Network Tasks': ['Design network topology', 'Configure connectivity'] }, resources: [] },
+            'capacity-planning': { icon: '📊', quests: { 'Capacity Tasks': ['Size VMs', 'Plan scaling'] }, resources: [] },
+            'identity-integration': { icon: '🔑', quests: { 'Identity Tasks': ['Configure Azure AD', 'Set up authentication'] }, resources: [] },
+            'host-pools': { icon: '🖥️', quests: { 'Host Pool Tasks': ['Create host pools', 'Configure settings'] }, resources: [] },
+            'session-hosts': { icon: '💻', quests: { 'Session Tasks': ['Deploy VMs', 'Configure images'] }, resources: [] },
+            'workspaces': { icon: '🗂️', quests: { 'Workspace Tasks': ['Create workspaces', 'Assign apps'] }, resources: [] },
+            'storage-solutions': { icon: '💾', quests: { 'Storage Tasks': ['Configure FSLogix', 'Set up Azure Files'] }, resources: [] },
+            'networking': { icon: '🔌', quests: { 'Network Tasks': ['Configure NSGs', 'Set up firewall'] }, resources: [] },
+            'rbac': { icon: '🛡️', quests: { 'RBAC Tasks': ['Configure roles', 'Set permissions'] }, resources: [] },
+            'conditional-access': { icon: '🔐', quests: { 'Access Tasks': ['Create policies', 'Configure MFA'] }, resources: [] },
+            'app-management': { icon: '📱', quests: { 'App Tasks': ['Configure MSIX', 'Publish apps'] }, resources: [] },
+            'user-profiles': { icon: '👤', quests: { 'Profile Tasks': ['Configure FSLogix', 'Set containers'] }, resources: [] },
+            'device-redirection': { icon: '🔄', quests: { 'Device Tasks': ['Configure USB', 'Set up printers'] }, resources: [] },
+            'automation': { icon: '🤖', quests: { 'Automation Tasks': ['Create templates', 'Write scripts'] }, resources: [] },
+            'scaling': { icon: '📈', quests: { 'Scaling Tasks': ['Create plans', 'Configure schedules'] }, resources: [] },
+            'updates': { icon: '🔄', quests: { 'Update Tasks': ['Configure updates', 'Manage patches'] }, resources: [] },
+            'backup-dr': { icon: '💾', quests: { 'Backup Tasks': ['Set up backup', 'Plan DR'] }, resources: [] },
+            'cost-management': { icon: '💰', quests: { 'Cost Tasks': ['Analyze costs', 'Optimize spending'] }, resources: [] },
+            'azure-monitor': { icon: '📊', quests: { 'Monitor Tasks': ['Configure monitoring', 'Create dashboards'] }, resources: [] },
+            'diagnostics': { icon: '🔍', quests: { 'Diagnostic Tasks': ['Enable logging', 'Analyze logs'] }, resources: [] },
+            'alerts': { icon: '🚨', quests: { 'Alert Tasks': ['Create alerts', 'Configure actions'] }, resources: [] },
+            'performance': { icon: '⚡', quests: { 'Performance Tasks': ['Optimize performance', 'Configure GPU'] }, resources: [] },
+            'troubleshooting': { icon: '🔧', quests: { 'Troubleshoot Tasks': ['Fix connections', 'Resolve issues'] }, resources: [] },
+            'security-monitoring': { icon: '🛡️', quests: { 'Security Tasks': ['Configure Defender', 'Monitor threats'] }, resources: [] }
+        };
+
+        // Main application state
+        let unlockedSkills = {};
+        let questProgress = {};
+        let currentSkill = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing AZ-140 Skill Tree...');
+            initSkillTree();
+        });
+
+        function initSkillTree() {
+            // Load saved progress
+            const savedSkills = localStorage.getItem('az140SkillTree');
+            const savedQuests = localStorage.getItem('az140QuestProgress');
+            
+            if (savedSkills) {
+                try {
+                    unlockedSkills = JSON.parse(savedSkills);
+                } catch (e) {
+                    console.error('Error loading saved skills:', e);
+                }
+            }
+            
+            if (savedQuests) {
+                try {
+                    questProgress = JSON.parse(savedQuests);
+                } catch (e) {
+                    console.error('Error loading saved quests:', e);
+                }
+            }
+            
+            updateProgress();
+            restoreUnlockedSkills();
+            setupEventListeners();
+            updateQuestCount();
+        }
+
+        function setupEventListeners() {
+            // Add click listeners to all skills
+            document.querySelectorAll('.skill').forEach(skill => {
+                skill.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const skillId = this.dataset.skill;
+                    console.log('Skill clicked:', skillId);
+                    openQuestModal(skillId);
+                });
+            });
+
+            // Close modal
+            const closeBtn = document.querySelector('.close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeModal);
+            }
+            
+            // Close on outside click
+            window.addEventListener('click', function(e) {
+                const modal = document.getElementById('questModal');
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+        }
+
+        function openQuestModal(skillId) {
+            currentSkill = skillId;
+            const modal = document.getElementById('questModal');
+            const skillData = skillQuests[skillId];
+            
+            if (!skillData) {
+                alert('Quest data not configured for this skill yet!');
+                return;
+            }
+
+            // Update modal header
+            document.getElementById('modalIcon').textContent = skillData.icon;
+            const skillElement = document.querySelector(`[data-skill="${skillId}"]`);
+            document.getElementById('modalSkillName').textContent = skillElement.querySelector('.skill-name').textContent;
+
+            // Build quest content
+            let questHTML = '<div class="quest-list">';
+            
+            // Add quests
+            Object.keys(skillData.quests).forEach(section => {
+                questHTML += `<div class="quest-section">
+                    <div class="quest-section-title">✅ ${section}</div>`;
+                
+                skillData.quests[section].forEach((quest, index) => {
+                    const questId = `${skillId}-${section}-${index}`;
+                    const isCompleted = questProgress[questId] || false;
+                    
+                    questHTML += `
+                        <div class="quest-item ${isCompleted ? 'completed' : ''}" data-quest-id="${questId}">
+                            <input type="checkbox" class="quest-checkbox" ${isCompleted ? 'checked' : ''}>
+                            <span class="quest-text">${quest}</span>
+                        </div>`;
+                });
+                questHTML += '</div>';
+            });
+
+            // Add resources if available
+            if (skillData.resources && skillData.resources.length > 0) {
+                questHTML += '<div class="resources"><div class="resources-title">📚 Learning Resources:</div>';
+                skillData.resources.forEach(resource => {
+                    questHTML += `<a href="${resource.url}" class="resource-link" target="_blank">→ ${resource.name}</a>`;
+                });
+                questHTML += '</div>';
+            }
+
+            // Add mastery button
+            const allQuests = getAllQuestsForSkill(skillId);
+            const completedQuests = allQuests.filter(qId => questProgress[qId]).length;
+            const isComplete = completedQuests === allQuests.length && allQuests.length > 0;
+            
+            questHTML += `
+                <button class="mastery-button" ${!isComplete ? 'disabled' : ''} id="masteryBtn">
+                    ${unlockedSkills[skillId] ? '✅ Skill Mastered!' : 'Mark as Mastered'} 
+                    (${completedQuests}/${allQuests.length} quests)
+                </button>
+            </div>`;
+
+            document.getElementById('questContent').innerHTML = questHTML;
+
+            // Add event listeners
+            document.querySelectorAll('.quest-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', handleQuestToggle);
+            });
+
+            const masteryBtn = document.getElementById('masteryBtn');
+            if (masteryBtn) {
+                masteryBtn.addEventListener('click', handleMastery);
+            }
+
+            // Show modal
+            modal.classList.add('show');
+        }
+
+        function handleQuestToggle(e) {
+            const questItem = e.target.closest('.quest-item');
+            const questId = questItem.dataset.questId;
+            
+            questProgress[questId] = e.target.checked;
+            questItem.classList.toggle('completed', e.target.checked);
+            
+            localStorage.setItem('az140QuestProgress', JSON.stringify(questProgress));
+            
+            // Update mastery button
+            const allQuests = getAllQuestsForSkill(currentSkill);
+            const completedQuests = allQuests.filter(qId => questProgress[qId]).length;
+            const isComplete = completedQuests === allQuests.length && allQuests.length > 0;
+            
+            const masteryBtn = document.getElementById('masteryBtn');
+            if (masteryBtn) {
+                masteryBtn.disabled = !isComplete;
+                masteryBtn.textContent = `${unlockedSkills[currentSkill] ? '✅ Skill Mastered!' : 'Mark as Mastered'} (${completedQuests}/${allQuests.length} quests)`;
+            }
+            
+            updateQuestCount();
+        }
+
+        function getAllQuestsForSkill(skillId) {
+            const skillData = skillQuests[skillId];
+            if (!skillData || !skillData.quests) return [];
+            
+            const questIds = [];
+            Object.keys(skillData.quests).forEach(section => {
+                skillData.quests[section].forEach((_, index) => {
+                    questIds.push(`${skillId}-${section}-${index}`);
+                });
+            });
+            return questIds;
+        }
+
+        function handleMastery() {
+            const skillElement = document.querySelector(`[data-skill="${currentSkill}"]`);
+            
+            if (!unlockedSkills[currentSkill]) {
+                unlockedSkills[currentSkill] = true;
+                skillElement.classList.add('unlocked');
+            } else {
+                unlockedSkills[currentSkill] = false;
+                skillElement.classList.remove('unlocked');
+            }
+            
+            localStorage.setItem('az140SkillTree', JSON.stringify(unlockedSkills));
+            updateProgress();
+            
+            const masteryBtn = document.getElementById('masteryBtn');
+            if (masteryBtn) {
+                masteryBtn.textContent = unlockedSkills[currentSkill] ? '✅ Skill Mastered!' : 'Mark as Mastered';
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('questModal');
+            if (modal) {
+                modal.classList.remove('show');
+            }
+            currentSkill = null;
+        }
+
+        function restoreUnlockedSkills() {
+            Object.keys(unlockedSkills).forEach(skillId => {
+                const skillElement = document.querySelector(`[data-skill="${skillId}"]`);
+                if (skillElement && unlockedSkills[skillId]) {
+                    skillElement.classList.add('unlocked');
+                }
+            });
+        }
+
+        function updateProgress() {
+            const totalSkills = document.querySelectorAll('.skill').length;
+            const unlockedCount = Object.values(unlockedSkills).filter(v => v).length;
+            const percentage = Math.round((unlockedCount / totalSkills) * 100);
+            
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = percentage + '% Complete';
+            document.getElementById('unlockedCount').textContent = unlockedCount;
+            document.getElementById('totalCount').textContent = totalSkills;
+        }
+
+        function updateQuestCount() {
+            const totalQuests = Object.keys(questProgress).filter(k => questProgress[k]).length;
+            document.getElementById('questsComplete').textContent = totalQuests;
+        }
+    </script>
 </body>
 </html>
